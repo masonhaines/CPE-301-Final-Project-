@@ -1,0 +1,56 @@
+cannot use these libraries GPIO, ADC, Timers, UART
+
+
+---Water level monitoring 
+must use the water level sensor from the kit. Threshold
+detection can use either an interrupt from the comparator or via a sample using the
+ADC.
+– You may NOT use the ADC library to perform the sampling
+#define POWER_PIN 7
+#define SIGNAL_PIN A5
+int value = 0; // variable to store the sensor value
+void setup() {
+Serial.begin(9600);
+pinMode (POWER_PIN, OUTPUT); // configure D7 pin as an OUTPUT
+digitalWrite (POWER_PIN, LOW); // turn the sensor OFF
+}
+void loop() {
+digitalWrite (POWER_PIN, HIGH); // turn the sensor ON
+delay(10); // wait 10 milliseconds
+value = analogRead (SIGNAL_PIN); // read the analog value from sensor
+digitalWrite (POWER_PIN, LOW); // turn the sensor OFF
+Serial.print("Sensor value: " );
+Serial.println (value);
+delay(1000);
+}
+Please make sure to check the final projectʼs rules about using library.
+
+
+● The vent direction control must be implemented using the ---stepper motor---. You can use
+either ---buttons or a potentiometer--- to control the direction of the vent
+–------->You may use the Arduino libraries for the stepper motor
+● The LCD display must be used for the required messages (defined below).
+–--------> You may use the Arduino library for the LCD.
+● The ----real-time clock module---- must be used for event reporting.
+–-----> You may use the Arduino library for the clock
+● The temp/humidity ---sensor DHT11---- must be used for the temp and humidity readings
+–------> You may use the Arduino library for this sensor.
+
+#include <dht.h> //install the DHTLib library
+dht DHT;
+#define DHT11_PIN 7
+void setup(){
+Serial.begin(9600);
+}
+void loop(){
+int chk = DHT.read11(DHT11_PIN);
+Serial.print("Temperature = ");
+Serial.println(DHT.temperature);
+Serial.print("Humidity = ");
+Serial.println(DHT.humidity);
+delay(1000);
+}
+Please make sure to check the final projectʼs rules about using library.
+● The kit motor and fan blade must be used for the fan motor.
+– Be sure to use the included separate power supply board! Connecting the fan directly
+to the Arduino can result in damage to the Arduino output circuitry.
