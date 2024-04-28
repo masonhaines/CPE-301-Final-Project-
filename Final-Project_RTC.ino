@@ -1,4 +1,4 @@
--//Final Project - Computer Engineering 301
+//Final Project - Computer Engineering 301
 //RTC Implementation
 //Written by: Samuel Mouradian
 
