@@ -1,0 +1,115 @@
+LIBRARY PARAMETERS:
+    - Cannot use these libraries:
+        1. GPIO
+        2. ADC
+        3. Timers
+        4. UART
+
+PROGRAMMING PORTIONS:
+    - Water level monitoring:
+        * Must use the water level sensor from the kit
+        * Threshold detection can use either an interrupt from the comparator or via a sample using the ADC.
+            [NOTE: You may NOT use the ADC library to perform the sampling!!]
+        * Code:
+            #define POWER_PIN 7
+            #define SIGNAL_PIN A5
+            int value = 0; // variable to store the sensor value
+            void setup() {
+                Serial.begin(9600);
+                pinMode (POWER_PIN, OUTPUT); // configure D7 pin as an OUTPUT
+                digitalWrite (POWER_PIN, LOW); // turn the sensor OFF
+            }
+            void loop() {
+                digitalWrite (POWER_PIN, HIGH); // turn the sensor ON
+                delay(10); // wait 10 milliseconds
+                value = analogRead (SIGNAL_PIN); // read the analog value from sensor
+                digitalWrite (POWER_PIN, LOW); // turn the sensor OFF
+                Serial.print("Sensor value: " );
+                Serial.println (value);
+                delay(1000);
+            }
+
+    - Vent Control:
+        * The vent direction control must be implemented using the stepper motor
+        * Use buttons or a potentiometer to control the direction of the vent
+            [NOTE: You may use the Arduino libraries for the stepper motor!!]
+
+    - LCD Display:
+        * Display must be used for the required messages (defined below)
+            [NOTE: You may use the Arduino library for the LCD!!]
+
+    - Real Time Clock (RTC):
+        * Clock must be ysed for event reporting
+            [NOTE: You may use the Arduino library for the clock!!]
+    
+    - Temperature/Humidity Implementation:
+        * Use Sensor DHT11
+        * Implementations must be used for the temp and humidity readings of the cooler
+            [NOTE: You may use the Arduino libraries for the Temperature/Humidity Implementations!!]
+        * Code:
+            #include <dht.h> //install the DHTLib library
+            dht DHT;
+            #define DHT11_PIN 7
+            void setup(){
+                Serial.begin(9600);
+            }
+            void loop(){
+                int chk = DHT.read11(DHT11_PIN);
+                Serial.print("Temperature = ");
+                Serial.println(DHT.temperature);
+                Serial.print("Humidity = ");
+                Serial.println(DHT.humidity);
+                delay(1000);
+            }
+
+OTHER NOTES:
+    - Please make sure to check the final projectʼs rules about using library.
+    - The kit motor and fan blade must be used for the fan motor.
+    - Be sure to use the included separate power supply board! Connecting the fan directly to the Arduino can result in damage to the Arduino output circuitry.
+    - Water Level Sensor:
+        * Functionality: Monitors the water levels in the reservoir.
+        * Requirements:
+            o Utilize the water level sensor from the Arduino kit.
+            o Threshold detection can be implemented using either an interrupt from the comparator or via ADC sampling without the ADC library.
+
+    - Stepper Motor:
+        * Functionality: Controls the direction of the output vent from the system.
+        * Requirements:
+            o Implement vent direction control using the stepper motor.
+            o Control can be achieved using either buttons or a potentiometer.
+            o Use Arduino libraries for stepper motor control.
+
+    - LCD Display:
+        * Functionality: Displays messages and system information.
+        * Requirements:
+            o Use the LCD display for displaying required messages.
+            o Utilize the Arduino library for LCD control.
+
+    - Real-Time Clock Module:
+        * Functionality: Provides timekeeping for event reporting.
+        * Requirements:
+            o Utilize the real-time clock module for event reporting.
+            o Use the Arduino library for clock control.
+
+    - Temperature/Humidity Sensor (DHT11):
+        * Functionality: Measures and reports the current air temperature and humidity.
+        * Requirements:
+            o Use the DHT11 sensor for temperature and humidity readings.
+            o Utilize the Arduino library for sensor control.
+
+    - Fan Motor:
+        * Functionality: Circulates air through the system.
+        * Requirements:
+            o Use the fan motor from the Arduino kit.
+            o Connect the fan motor to the system with a separate power supply board to prevent damage to the Arduino output circuitry.
+
+COMPLETED PORTIONS:
+    - Stepper Motor
+    - Fan Motor
+    - Temperature/Humidity Sensor
+    - Water Level Sensor
+    - RTC
+    - Delay
+
+STILL TO DO:
+    - LCD
