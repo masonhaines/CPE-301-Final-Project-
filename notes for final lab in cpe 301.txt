@@ -54,3 +54,43 @@ Please make sure to check the final projectʼs rules about using library.
 ● The kit motor and fan blade must be used for the fan motor.
 – Be sure to use the included separate power supply board! Connecting the fan directly
 to the Arduino can result in damage to the Arduino output circuitry.
+
+
+:
+
+    Water Level Sensor:
+        Functionality: Monitors the water levels in the reservoir.
+        Requirements:
+            Utilize the water level sensor from the Arduino kit.
+            Threshold detection can be implemented using either an interrupt from the comparator or via ADC sampling without the ADC library.
+
+    Stepper Motor:
+        Functionality: Controls the direction of the output vent from the system.
+        Requirements:
+            Implement vent direction control using the stepper motor.
+            Control can be achieved using either buttons or a potentiometer.
+            Use Arduino libraries for stepper motor control.
+
+    LCD Display:
+        Functionality: Displays messages and system information.
+        Requirements:
+            Use the LCD display for displaying required messages.
+            Utilize the Arduino library for LCD control.
+
+    Real-Time Clock Module:
+        Functionality: Provides timekeeping for event reporting.
+        Requirements:
+            Utilize the real-time clock module for event reporting.
+            Use the Arduino library for clock control.
+
+    Temperature/Humidity Sensor (DHT11):
+        Functionality: Measures and reports the current air temperature and humidity.
+        Requirements:
+            Use the DHT11 sensor for temperature and humidity readings.
+            Utilize the Arduino library for sensor control.
+
+    Fan Motor:
+        Functionality: Circulates air through the system.
+        Requirements:
+            Use the fan motor from the Arduino kit.
+            Connect the fan motor to the system with a separate power supply board to prevent damage to the Arduino output circuitry.
