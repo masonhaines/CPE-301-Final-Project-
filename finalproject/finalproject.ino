@@ -76,6 +76,12 @@ void loop(){
 
 }
 
+
+
+
+
+
+
 void readAndPrint(unsigned char input){
   unsigned char cs1;
   while (U0kbhit()==0){}; // wait for RDA = true
@@ -215,3 +221,83 @@ void RTCtime(){
     U0putchar(time[i]);
   }
 }
+
+
+
+
+// volatile unsigned char *myUCSR0A = (unsigned char *)0x00C0;
+// volatile unsigned char *myUCSR0B = (unsigned char *)0x00C1;
+// volatile unsigned char *myUCSR0C = (unsigned char *)0x00C2;
+// volatile unsigned int  *myUBRR0  = (unsigned int *) 0x00C4;
+// volatile unsigned char *myUDR0   = (unsigned char *)0x00C6;
+ 
+// volatile unsigned char* my_ADMUX = (unsigned char*) 0x7C;
+// volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;
+// volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;
+// volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
+
+// volatile unsigned char *myTCCR1A = (unsigned char *) 0x80;
+// volatile unsigned char *myTCCR1B = (unsigned char *) 0x81;
+// volatile unsigned char *myTCCR1C = (unsigned char *) 0x82;
+// volatile unsigned char *myTIMSK1 = (unsigned char *) 0x6F;
+// volatile unsigned int  *myTCNT1  = (unsigned  int *) 0x84;
+// volatile unsigned char *myTIFR1  = (unsigned char *) 0x36;
+
+// // Define pointers to I/O registers for port K
+// volatile unsigned char* port_k = (unsigned char*) 0x108; 
+// volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
+// volatile unsigned char* pin_k  = (unsigned char*) 0x106; 
+
+// // Define pointers to I/O registers for port E
+// volatile unsigned char* port_E = (unsigned char*) 0x2E; 
+// volatile unsigned char* ddr_E  = (unsigned char*) 0x2D; 
+// volatile unsigned char* pin_E  = (unsigned char*) 0x2C; 
+
+// unsigned int timer_running; 
+// unsigned int currentTicks; 
+
+
+// void setup() {
+//   // Set PK7 as input with pull-up resistor enabled
+//   *ddr_k &= ~(1 << 7);  // Set bit 7 of DDRK to 0 for input
+//   *port_k |= (1 << 7);  // Set bit 7 of PORTK to 1 to enable pull-up resistor
+
+//   // Set PE0 as output and turn off the LED initially
+//   *ddr_E |= (1 << 0);   // Set bit 0 of DDRE to 1 for output
+//   *port_E &= (1 << 0); // Clear bit 0 of PORTE to turn off the LED initially
+
+//   // Initialize Timer
+//   setup_timer_regs();
+// }
+
+// void loop() {
+//   // No need for code here, ISR handles the button press
+// }
+
+// // ISR to handle button press
+// ISR(TIMER1_OVF_vect)
+// {
+//   // Check if the button is pressed (PK7 is low)
+//   if ((*pin_k & (1 << 7))) {
+//     // Toggle the LED only if it was previously off
+//     if (!(*port_E & (1 << 0))) {
+//       *port_E |= (1 << 0); // Turn on the LED
+//     } else {
+//       *port_E &= ~(1 << 0); // Turn off the LED
+//     }
+//     // Wait for the button to be released
+//     while ((*pin_k & (1 << 7)));
+//   }
+// }
+
+// // Timer setup function
+// void setup_timer_regs()
+// {
+//   // Setup Timer1 for normal mode with overflow interrupt enabled
+//   TCCR1A = 0x00; // Normal mode
+//   TCCR1B = 0x01; // No prescaler, start the timer
+//   TCCR1C = 0x00; // Not used in normal mode
+
+//   // Enable Timer1 overflow interrupt
+//   TIMSK1 |= (1 << TOIE1);
+// }
