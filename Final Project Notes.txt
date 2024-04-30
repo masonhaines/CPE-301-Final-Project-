@@ -5,6 +5,8 @@ LIBRARY PARAMETERS:
         3. Timers
         4. UART
 
+
+
 PROGRAMMING PORTIONS:
     - Water level monitoring:
         * Must use the water level sensor from the kit
@@ -62,6 +64,8 @@ PROGRAMMING PORTIONS:
                 delay(1000);
             }
 
+
+
 OTHER NOTES:
     - Please make sure to check the final projectʼs rules about using library.
     - The kit motor and fan blade must be used for the fan motor.
@@ -103,13 +107,23 @@ OTHER NOTES:
             o Use the fan motor from the Arduino kit.
             o Connect the fan motor to the system with a separate power supply board to prevent damage to the Arduino output circuitry.
 
+
+
 COMPLETED PORTIONS:
-    - Stepper Motor
-    - Fan Motor
-    - Temperature/Humidity Sensor
-    - Water Level Sensor
-    - RTC
-    - Delay
+    - Stepper Motor               (INDEPENDENT)
+        - Implemented Stepper Motor function          (Implementation Location: "finalproject.ino")
+    - Fan Motor                   (INDEPENDENT)
+    - Temperature/Humidity Sensor (INDEPENDENT)
+    - Water Level Sensor          (INDEPENDENT)
+    - RTC                         (INDEPENDENT)
+        - Implemented RTC function into main driver   (Implementation Location: "finalproject.ino")
+    - Delay                       (INDEPENDENT)
+        - Implemented delay function into main driver (Implementation Location: "finalproject.ino")
+
+
 
 STILL TO DO:
-    - LCD
+    - Implement LCD Function                  (Desired Implementation Location: "finalproject.ino")
+    - Implement Fan Motor Function            (Desired Implementation Location: "finalproject.ino")
+    - Implement Temperature/Humidity Function (Desired Implementation Location: "finalproject.ino")
+    - Implement Water Level Sensor            (Desired Implementation Location: "finalproject.ino")
