@@ -20,14 +20,7 @@ void setup()
 
 void loop()
 {
-    int value = adc_read(adc_id); // get adc value
-
-    if(((HistoryValue>=value) && ((HistoryValue - value) > 10)) || ((HistoryValue<value) && ((value - HistoryValue) > 10)))
-    {
-      sprintf(printBuffer,"ADC%d level is %d\n",adc_id, value);
-      Serial.print(printBuffer);
-      HistoryValue = value;
-    } 
+  checkADCValue(adc_id, HistoryValue);
 }
 
 void adc_init()
@@ -71,4 +64,22 @@ unsigned int adc_read(unsigned char adc_channel_num)
   
   // return the result in the ADC data register
   return (*my_ADC_DATA & 0x03FF);
+}
+
+// Function to print ADC value to Serial
+void printADCValue(int adc_id, int value) {
+  sprintf(printBuffer, "ADC%d level is %d\n", adc_id, value);
+  Serial.print(printBuffer);
+}
+
+// Function to check ADC value and print if significant change is detected
+void checkADCValue(int adc_id, int historyValue) {
+  int value = adc_read(adc_id); // Get current ADC value
+
+  // Check for significant change in ADC value
+  if (((historyValue >= value) && ((historyValue - value) > 10)) ||
+      ((historyValue < value) && ((value - historyValue) > 10))) {
+    printADCValue(adc_id, value); // Print ADC value
+    HistoryValue = value; // Update history value
+  }
 }
