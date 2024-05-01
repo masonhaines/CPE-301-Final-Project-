@@ -6,6 +6,10 @@
 //Latest Edit Note:           Implemented Stepper Motor Code, RTC, and Delay Function
 
 
+//pins in use 
+// 0, 1, 2, 3
+//A15, A0, A1
+
 // HEADERS
 #include <LiquidCrystal.h>
 #include <Stepper.h>
@@ -36,6 +40,23 @@ volatile unsigned char *myTCCR1B = (unsigned char *) 0x81;
 volatile unsigned char *myTCCR1C = (unsigned char *) 0x82;
 volatile unsigned int  *myTCNT1  = (unsigned  int *) 0x84;
 
+// pointers to I/O registers for port K
+volatile unsigned char* port_k = (unsigned char*) 0x108; 
+volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
+volatile unsigned char* pin_k  = (unsigned char*) 0x106; 
+
+// pointers to I/O registers for port E
+volatile unsigned char* port_E = (unsigned char*) 0x2E; 
+volatile unsigned char* ddr_E  = (unsigned char*) 0x2D; 
+volatile unsigned char* pin_E  = (unsigned char*) 0x2C; 
+#define PE0 (1 << 0) // PE0
+#define PE1 (1 << 1) // PE1
+#define PE4 (1 << 4) // PE4
+#define PE5 (1 << 5) // PE5
+
+unsigned int timer_running; 
+unsigned int currentTicks; 
+
 // STEPPER MOTOR VARIABLES
 const int stepsPerRevolution = 2038;
 Stepper myStepper = Stepper(stepsPerRevolution, 8, 10, 9, 11);
@@ -44,6 +65,18 @@ Stepper myStepper = Stepper(stepsPerRevolution, 8, 10, 9, 11);
 
 // SETUP
 void setup() {
+  // Set PK7 as input with pull-up resistor enabled
+  *ddr_k &= ~(1 << 7);  // Set bit 7 of DDRK to 0 for input
+  *port_k |= (1 << 7);  // Set bit 7 of PORTK to 1 to enable pull-up resistor
+
+  // Set PE 0, 1, 4, 5 as output and turn off the LED initially
+  unsigned char value = 0b00110011; // Set DDR register to 0011 0011
+  *ddr_E = value;  // Set bit 0 of DDRE to 1 for output 0011 0011
+  *port_E &= (1 << 0); // Clear bit 0 of PORTE to turn on the yellow LED initially PIN0/RX0
+
+  // Initialize Timer
+  setup_timer_regs();
+
   adc_init();   // Setup ADC
   U0init(9600); // Initialize Serial Port
 }
@@ -52,42 +85,145 @@ void setup() {
 
 // LOOP
 void loop(){
-  readAndPrint(cs1);
-  RTCtime();
+  // readAndPrint(cs1);
+  // RTCtime();
 
-// Read ADC value from different channels
-  int adcValue0 = adc_read(0); // Button 1
-  int adcValue1 = adc_read(1); // Button 2
+// // Read ADC value from different channels to toggle stepper motor
+//   int adcValue0 = adc_read(0); // Button 1
+//   int adcValue1 = adc_read(1); // Button 2
 
-// Check if button 1 is pressed
-  if (adcValue0 > 800) {         // Assuming a threshold value for button press
-    moveStepper(100);            // Move clockwise by 100 steps
-    while (adc_read(0) > 800) {} // Wait until button 1 is released
-    my_delay(100);
+// // Check if button 1 is pressed
+//   if (adcValue0 > 800) {         // Assuming a threshold value for button press
+//     moveStepper(100);            // Move clockwise by 100 steps
+//     while (adc_read(0) > 800) {} // Wait until button 1 is released
+//     my_delay(100);
+//   }
+
+// // Check if button 2 is pressed
+//   if (adcValue1 > 800) {         // Assuming a threshold value for button press
+//     moveStepper(-100);           // Move counterclockwise by 100 steps
+//     while (adc_read(1) > 800) {} // Wait until button 2 is released
+//     my_delay(100);
+//   }
+
+  // LCD pins <--> Arduino pins
+  const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
+  LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
+
+  int temp;
+  int humidity;
+
+  if (*ddr_E & PE1) { // if PE is set, if green light is on
+    temp = 10;
+    humidity = 20;
+    printToLCD(temp, humidity);
+    
   }
-
-// Check if button 2 is pressed
-  if (adcValue1 > 800) {         // Assuming a threshold value for button press
-    moveStepper(-100);           // Move counterclockwise by 100 steps
-    while (adc_read(1) > 800) {} // Wait until button 2 is released
-    my_delay(100);
-  }
-
 
 }
 
-
-
-
-
-
-
-void readAndPrint(unsigned char input){
-  unsigned char cs1;
-  while (U0kbhit()==0){}; // wait for RDA = true
-  cs1 = U0getchar();      // read character
-  U0putchar(input);       // echo character
+void printToLCD(int temp, int humidity) {
+  lcd.clear(); // Clear the LCD screen
+  lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
+  
+  lcd.setCursor(0, 1); // Set cursor to the beginning of the second row
+  lcd.print("Var1: ");
+  lcd.print(temp); // Print the first variable
+  lcd.print(" Var2: ");
+  lcd.print(humidity); // Print the second variable
 }
+
+// STEPPER MOTOR FUNCTIONS
+void moveStepper(int steps){
+  myStepper.setSpeed(5);
+  myStepper.step(steps);
+}
+
+// ISR to handle button press
+ISR(TIMER1_OVF_vect)
+{
+  // Check if the button is pressed (PK7 is low)
+  if ((*pin_k & (1 << 7))) {
+    // Toggle the LED only if it was previously off
+    if (!(*port_E & (1 << 0))) {
+      *port_E |= (1 << 0); // Turn on the yellow LED PE0
+      *port_E &= ~(2 << 0); // Turn off the green LED PE1
+    } else {
+      *port_E &= ~(1 << 0); // Turn off the yellow LED PE0
+      *port_E |= (2 << 0); // Turn on the green LED PE1
+    }
+    // Wait for the button to be released
+    while ((*pin_k & (1 << 7)));
+  }
+}
+
+// Timer setup function
+void setup_timer_regs()
+{
+  // Setup Timer1 for normal mode with overflow interrupt enabled
+  TCCR1A = 0x00; // Normal mode
+  TCCR1B = 0x01; // No prescaler, start the timer
+  TCCR1C = 0x00; // Not used in normal mode
+
+  // Enable Timer1 overflow interrupt
+  TIMSK1 |= (1 << TOIE1);
+}
+
+// DELAY FUNCTION
+void my_delay(unsigned int freq){
+  double period = 1.0/double(freq);               //Calculate period
+  double half_period = period/ 2.0f;              //50% duty cycle
+  double clk_period = 0.0000000625;               //Clock period def
+  unsigned int ticks = half_period / clk_period;  //Calculate ticks
+
+  *myTCCR1B &= 0xF8;                              //Stop the timer
+  *myTCNT1 = (unsigned int) (65536 - ticks);      //Set the counts
+  *myTCCR1B |= 0b00000001;                        //Start the timer
+
+  while((*myTIFR1 & 0x01)==0);                    //Wait for overflow 
+  *myTCCR1B &= 0xF8;                              //Stop the timer
+  *myTIFR1 |= 0x01;                               //Reset TOV
+}
+
+// REAL TIME CLOCK FUNCTION
+// void RTCtime(){
+//   DateTime now = rtc.now();
+//   int year = now.year();
+//   int month = now.month();
+//   int day = now.day();
+//   int hour = now.hour();
+//   int minute = now.minute();
+//   int second = now.second();
+//   char time[24] = {
+//     'a',
+//     't',
+//     ' ',
+//     hour / 10 + '0',
+//     hour % 10 + '0',
+//     ':',
+//     minute / 10 + '0',
+//     minute % 10 + '0',
+//     ':',
+//     second / 10 + '0',
+//     second % 10 + '0',
+//     'o',
+//     'n',
+//     month / 10 + '0',
+//     month % 10 + '0',
+//     '/',
+//     day / 10 + '0',
+//     day % 10 + '0',
+//     '/',
+//     (year / 1000) + '0',
+//     (year % 1000 / 100) + '0',
+//     (year % 100 / 10) + '0',
+//     (year % 10) + '0',
+//   };
+//   for (int i = 0; i < 23; i++)
+//   {
+//     U0putchar(time[i]);
+//   }
+// }
 
 void U0init(unsigned long U0baud){
   unsigned long FCPU = 16000000;
@@ -113,32 +249,12 @@ void U0putchar(unsigned char U0pdata){
   *myUDR0 = U0pdata;
 }
 
-
-
-// STEPPER MOTOR FUNCTIONS
-void moveStepper(int steps){
-  myStepper.setSpeed(5);
-  myStepper.step(steps);
+void readAndPrint(unsigned char input){
+  unsigned char cs1;
+  while (U0kbhit()==0){}; // wait for RDA = true
+  cs1 = U0getchar();      // read character
+  U0putchar(input);       // echo character
 }
-
-
-// ADC REGISTER SETUP FUNCTION
-void adc_init(){
-  // setup the A register
-  *my_ADCSRA |= 0b10000000; // set bit   7 to 1 to enable the ADC
-  *my_ADCSRA &= 0b11011111; // clear bit 6 to 0 to disable the ADC trigger mode
-  *my_ADCSRA &= 0b11110111; // clear bit 5 to 0 to disable the ADC interrupt
-  *my_ADCSRA &= 0b11111000; // clear bit 0-2 to 0 to set prescaler selection to slow reading
-  // setup the B register
-  *my_ADCSRB &= 0b11110111; // clear bit 3 to 0 to reset the channel and gain bits
-  *my_ADCSRB &= 0b11111000; // clear bit 2-0 to 0 to set free running mode
-  // setup the MUX Register
-  *my_ADMUX  &= 0b01111111; // clear bit 7 to 0 for AVCC analog reference
-  *my_ADMUX  |= 0b01000000; // set bit   6 to 1 for AVCC analog reference
-  *my_ADMUX  &= 0b11011111; // clear bit 5 to 0 for right adjust result
-  *my_ADMUX  &= 0b11100000; // clear bit 4-0 to 0 to reset the channel and gain bits
-}
-
 
 // ADC READ FUNCITON
 unsigned int adc_read(unsigned char adc_channel_num){
@@ -164,140 +280,19 @@ unsigned int adc_read(unsigned char adc_channel_num){
   return *my_ADC_DATA;
 }
 
-
-// DELAY FUNCTION
-void my_delay(unsigned int freq){
-  double period = 1.0/double(freq);               //Calculate period
-  double half_period = period/ 2.0f;              //50% duty cycle
-  double clk_period = 0.0000000625;               //Clock period def
-  unsigned int ticks = half_period / clk_period;  //Calculate ticks
-
-  *myTCCR1B &= 0xF8;                              //Stop the timer
-  *myTCNT1 = (unsigned int) (65536 - ticks);      //Set the counts
-  *myTCCR1B |= 0b00000001;                        //Start the timer
-
-  while((*myTIFR1 & 0x01)==0);                    //Wait for overflow 
-  *myTCCR1B &= 0xF8;                              //Stop the timer
-  *myTIFR1 |= 0x01;                               //Reset TOV
+// ADC REGISTER SETUP FUNCTION
+void adc_init(){
+  // setup the A register
+  *my_ADCSRA |= 0b10000000; // set bit   7 to 1 to enable the ADC
+  *my_ADCSRA &= 0b11011111; // clear bit 6 to 0 to disable the ADC trigger mode
+  *my_ADCSRA &= 0b11110111; // clear bit 5 to 0 to disable the ADC interrupt
+  *my_ADCSRA &= 0b11111000; // clear bit 0-2 to 0 to set prescaler selection to slow reading
+  // setup the B register
+  *my_ADCSRB &= 0b11110111; // clear bit 3 to 0 to reset the channel and gain bits
+  *my_ADCSRB &= 0b11111000; // clear bit 2-0 to 0 to set free running mode
+  // setup the MUX Register
+  *my_ADMUX  &= 0b01111111; // clear bit 7 to 0 for AVCC analog reference
+  *my_ADMUX  |= 0b01000000; // set bit   6 to 1 for AVCC analog reference
+  *my_ADMUX  &= 0b11011111; // clear bit 5 to 0 for right adjust result
+  *my_ADMUX  &= 0b11100000; // clear bit 4-0 to 0 to reset the channel and gain bits
 }
-
-
-// REAL TIME CLOCK FUNCTION
-void RTCtime(){
-  DateTime now = rtc.now();
-  int year = now.year();
-  int month = now.month();
-  int day = now.day();
-  int hour = now.hour();
-  int minute = now.minute();
-  int second = now.second();
-  char time[24] = {
-    'a',
-    't',
-    ' ',
-    hour / 10 + '0',
-    hour % 10 + '0',
-    ':',
-    minute / 10 + '0',
-    minute % 10 + '0',
-    ':',
-    second / 10 + '0',
-    second % 10 + '0',
-    'o',
-    'n',
-    month / 10 + '0',
-    month % 10 + '0',
-    '/',
-    day / 10 + '0',
-    day % 10 + '0',
-    '/',
-    (year / 1000) + '0',
-    (year % 1000 / 100) + '0',
-    (year % 100 / 10) + '0',
-    (year % 10) + '0',
-  };
-  for (int i = 0; i < 23; i++)
-  {
-    U0putchar(time[i]);
-  }
-}
-
-
-
-
-// volatile unsigned char *myUCSR0A = (unsigned char *)0x00C0;
-// volatile unsigned char *myUCSR0B = (unsigned char *)0x00C1;
-// volatile unsigned char *myUCSR0C = (unsigned char *)0x00C2;
-// volatile unsigned int  *myUBRR0  = (unsigned int *) 0x00C4;
-// volatile unsigned char *myUDR0   = (unsigned char *)0x00C6;
- 
-// volatile unsigned char* my_ADMUX = (unsigned char*) 0x7C;
-// volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;
-// volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;
-// volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
-
-// volatile unsigned char *myTCCR1A = (unsigned char *) 0x80;
-// volatile unsigned char *myTCCR1B = (unsigned char *) 0x81;
-// volatile unsigned char *myTCCR1C = (unsigned char *) 0x82;
-// volatile unsigned char *myTIMSK1 = (unsigned char *) 0x6F;
-// volatile unsigned int  *myTCNT1  = (unsigned  int *) 0x84;
-// volatile unsigned char *myTIFR1  = (unsigned char *) 0x36;
-
-// // Define pointers to I/O registers for port K
-// volatile unsigned char* port_k = (unsigned char*) 0x108; 
-// volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
-// volatile unsigned char* pin_k  = (unsigned char*) 0x106; 
-
-// // Define pointers to I/O registers for port E
-// volatile unsigned char* port_E = (unsigned char*) 0x2E; 
-// volatile unsigned char* ddr_E  = (unsigned char*) 0x2D; 
-// volatile unsigned char* pin_E  = (unsigned char*) 0x2C; 
-
-// unsigned int timer_running; 
-// unsigned int currentTicks; 
-
-
-// void setup() {
-//   // Set PK7 as input with pull-up resistor enabled
-//   *ddr_k &= ~(1 << 7);  // Set bit 7 of DDRK to 0 for input
-//   *port_k |= (1 << 7);  // Set bit 7 of PORTK to 1 to enable pull-up resistor
-
-//   // Set PE0 as output and turn off the LED initially
-//   *ddr_E |= (1 << 0);   // Set bit 0 of DDRE to 1 for output
-//   *port_E &= (1 << 0); // Clear bit 0 of PORTE to turn off the LED initially
-
-//   // Initialize Timer
-//   setup_timer_regs();
-// }
-
-// void loop() {
-//   // No need for code here, ISR handles the button press
-// }
-
-// // ISR to handle button press
-// ISR(TIMER1_OVF_vect)
-// {
-//   // Check if the button is pressed (PK7 is low)
-//   if ((*pin_k & (1 << 7))) {
-//     // Toggle the LED only if it was previously off
-//     if (!(*port_E & (1 << 0))) {
-//       *port_E |= (1 << 0); // Turn on the LED
-//     } else {
-//       *port_E &= ~(1 << 0); // Turn off the LED
-//     }
-//     // Wait for the button to be released
-//     while ((*pin_k & (1 << 7)));
-//   }
-// }
-
-// // Timer setup function
-// void setup_timer_regs()
-// {
-//   // Setup Timer1 for normal mode with overflow interrupt enabled
-//   TCCR1A = 0x00; // Normal mode
-//   TCCR1B = 0x01; // No prescaler, start the timer
-//   TCCR1C = 0x00; // Not used in normal mode
-
-//   // Enable Timer1 overflow interrupt
-//   TIMSK1 |= (1 << TOIE1);
-// }
