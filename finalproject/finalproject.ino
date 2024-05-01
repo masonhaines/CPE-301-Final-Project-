@@ -2,13 +2,13 @@
 //File:                       Main Driver
 //Authors:                    Mason Haines, Autsin Jarolimek, Samuel Mouradian
 //Version:                    2.0
-//Date of Last Revision:      04.30.2024
+//Date of Last Revision:      05.1.2024
 //Latest Edit Note:           Implemented Stepper Motor Code, RTC, and Delay Function
 
 
 //pins in use 
-// 0, 1, 2, 3
-//A15, A0, A1
+// A14 yellow, A12 green , blue,  red
+//A15 on button, A0 stepper, A1 stepper 
 
 // HEADERS
 #include <LiquidCrystal.h>
@@ -41,38 +41,45 @@ volatile unsigned char *myTCCR1C = (unsigned char *) 0x82;
 volatile unsigned int  *myTCNT1  = (unsigned  int *) 0x84;
 
 // pointers to I/O registers for port K
-volatile unsigned char* port_k = (unsigned char*) 0x108; 
-volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
-volatile unsigned char* pin_k  = (unsigned char*) 0x106; 
+volatile unsigned char* port_K = (unsigned char*) 0x108; 
+volatile unsigned char* ddr_K  = (unsigned char*) 0x107; 
+volatile unsigned char* pin_K  = (unsigned char*) 0x106; 
 
 // pointers to I/O registers for port E
 volatile unsigned char* port_E = (unsigned char*) 0x2E; 
 volatile unsigned char* ddr_E  = (unsigned char*) 0x2D; 
 volatile unsigned char* pin_E  = (unsigned char*) 0x2C; 
-#define PE0 (1 << 0) // PE0
-#define PE1 (1 << 1) // PE1
-#define PE4 (1 << 4) // PE4
-#define PE5 (1 << 5) // PE5
+// #define PK6 (1 << 4) // PK6 pin A14
+// #define PK5 (1 << 5) // PK5 pin A13
 
 unsigned int timer_running; 
 unsigned int currentTicks; 
+const char *currentState = "DISABLED"; // Default state is DISABLED
+
+
+// LCD pins <--> Arduino pins
+const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
+LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
 // STEPPER MOTOR VARIABLES
 const int stepsPerRevolution = 2038;
-Stepper myStepper = Stepper(stepsPerRevolution, 8, 10, 9, 11);
+// Stepper myStepper = Stepper(stepsPerRevolution, needs four pins in analog );
 
 
 
 // SETUP
 void setup() {
+  lcd.begin(16, 2); // set up number of columns and rows
+  unsigned char value = 0b01111000; // Set DDR register to 0110 0000
   // Set PK7 as input with pull-up resistor enabled
-  *ddr_k &= ~(1 << 7);  // Set bit 7 of DDRK to 0 for input
-  *port_k |= (1 << 7);  // Set bit 7 of PORTK to 1 to enable pull-up resistor
+  *ddr_K &= ~(1 << 7);  // Set bit 7 of DDRK to 0 for input pin A15
+  *port_K |= (1 << 7);  // Set bit 7 of PORTK to 1 to enable pull-up resistor
 
-  // Set PE 0, 1, 4, 5 as output and turn off the LED initially
-  unsigned char value = 0b00110011; // Set DDR register to 0011 0011
-  *ddr_E = value;  // Set bit 0 of DDRE to 1 for output 0011 0011
-  *port_E &= (1 << 0); // Clear bit 0 of PORTE to turn on the yellow LED initially PIN0/RX0
+  // Set PK6 and PK5 as outputs and turn off the LEDs initially
+  *ddr_K |= value;  // Set bit 6 and bit 5 of DDRK to 1 for output
+  *port_K |= (1 << 6); // set bit 6 of PORTK to turn on the yellow LED initially pin A14
+  *port_K |= ~(1 << 5); // clear bit 5 of PORTK to turn off the green LED initially pin A13
+  
 
   // Initialize Timer
   setup_timer_regs();
@@ -85,6 +92,17 @@ void setup() {
 
 // LOOP
 void loop(){
+  // // Read and print the state of each pin in PORTK
+  // for (int pin = PK0; pin <= PK7; pin++) {
+  //   int state = (PORTK >> pin) & 0x01; // Read the state of the pin in PORTK
+  //   Serial.print("Pin PK");
+  //   Serial.print(pin);
+  //   Serial.print(" state: ");
+  //   Serial.println(state);
+  // }
+  
+  // // Add delay if necessary
+  // delay(1000);
   // readAndPrint(cs1);
   // RTCtime();
 
@@ -93,67 +111,77 @@ void loop(){
 //   int adcValue1 = adc_read(1); // Button 2
 
 // // Check if button 1 is pressed
-//   if (adcValue0 > 800) {         // Assuming a threshold value for button press
+//   if (adcValue0 > 800) {         
 //     moveStepper(100);            // Move clockwise by 100 steps
 //     while (adc_read(0) > 800) {} // Wait until button 1 is released
 //     my_delay(100);
 //   }
 
 // // Check if button 2 is pressed
-//   if (adcValue1 > 800) {         // Assuming a threshold value for button press
+//   if (adcValue1 > 800) {         
 //     moveStepper(-100);           // Move counterclockwise by 100 steps
 //     while (adc_read(1) > 800) {} // Wait until button 2 is released
 //     my_delay(100);
 //   }
 
-  // LCD pins <--> Arduino pins
-  const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
-  LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
+  
 
   int temp;
   int humidity;
 
-  if (*ddr_E & PE1) { // if PE is set, if green light is on
-    temp = 10;
-    humidity = 20;
-    printToLCD(temp, humidity);
+  // Print current state at the top portion of the LCD
+  lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
+  lcd.print(currentState); // Display the current state on the LCD
+
+  // Replace these values with actual temperature and humidity readings
+  // temp = 10;
+  // humidity = 20;
+
+  // Print to LCD only if PK5 or PK6 is set
+  lcd.setCursor(0, 1); // Set cursor to the beginning of the second row
+  lcd.print("T: ");
+  lcd.print(temp);
+  lcd.print(" H: ");
+  lcd.print(humidity); // Display temperature and humidity on the LCD
+  lcd.clear(); // Clear the LCD
+
+  // Check if PK6 is set (yellow LED is on)
+  if (*port_K & (1 << 6)) {
     
+    currentState = "DISABLED"; // Update currentState to DISABLED
   }
 
+  // Check if PK6 is cleared (yellow LED is off)
+  if (!(*port_K & (1 << 6))) {
+    
+    currentState = "IDLE"; // Update currentState to IDLE
+  }
+
+
 }
 
-void printToLCD(int temp, int humidity) {
-  lcd.clear(); // Clear the LCD screen
-  lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
-  
-  lcd.setCursor(0, 1); // Set cursor to the beginning of the second row
-  lcd.print("Var1: ");
-  lcd.print(temp); // Print the first variable
-  lcd.print(" Var2: ");
-  lcd.print(humidity); // Print the second variable
-}
-
-// STEPPER MOTOR FUNCTIONS
-void moveStepper(int steps){
-  myStepper.setSpeed(5);
-  myStepper.step(steps);
-}
 
 // ISR to handle button press
 ISR(TIMER1_OVF_vect)
 {
+  
   // Check if the button is pressed (PK7 is low)
-  if ((*pin_k & (1 << 7))) {
+  if (!(*pin_K & (1 << 7))) {
+    // lcd.clear();
     // Toggle the LED only if it was previously off
-    if (!(*port_E & (1 << 0))) {
-      *port_E |= (1 << 0); // Turn on the yellow LED PE0
-      *port_E &= ~(2 << 0); // Turn off the green LED PE1
+    if (!(*port_K & (1 << 5))) {
+      
+      *port_K |= (1 << 5); // Turn on the green LED PK5
+      *port_K &= ~(1 << 6); // Turn off the yellow LED PK6
+      // currentState = "IDLE"; // Update currentState to IDLE
     } else {
-      *port_E &= ~(1 << 0); // Turn off the yellow LED PE0
-      *port_E |= (2 << 0); // Turn on the green LED PE1
+      
+      *port_K &= ~(1 << 5); // Turn off the green LED PK5
+      *port_K |= (1 << 6); // Turn on the yellow LED PK6
+      // currentState = "DISABLED"; // Update currentState to DISABLED
     }
     // Wait for the button to be released
-    while ((*pin_k & (1 << 7)));
+    while (!(*pin_K & (1 << 7)));
   }
 }
 
@@ -168,6 +196,14 @@ void setup_timer_regs()
   // Enable Timer1 overflow interrupt
   TIMSK1 |= (1 << TOIE1);
 }
+
+
+
+// // STEPPER MOTOR FUNCTIONS
+// void moveStepper(int steps){
+//   myStepper.setSpeed(5);
+//   myStepper.step(steps);
+// }
 
 // DELAY FUNCTION
 void my_delay(unsigned int freq){
