@@ -14,8 +14,16 @@
 #include <LiquidCrystal.h>
 #include <Stepper.h>
 #include <RTClib.h>
+#include "DHT.h"
+#include "DHT_U.h"
 
-// DEFINITIONS
+   // Digital pin connected to the DHT sensor
+// Feather HUZZAH ESP8266 note: use pins 3, 4, 5, 12, 13 or 14 --
+// Pin 15 can work but DHT must be disconnected during program upload.
+
+
+#define DHTPIN 6  
+#define DHTTYPE DHT11 
 #define RDA 0x80
 #define TBE 0x20  
 
@@ -56,6 +64,8 @@ unsigned int timer_running;
 unsigned int currentTicks; 
 const char *currentState = "DISABLED"; // Default state is DISABLED
 
+DHT dht(DHTPIN, DHTTYPE);
+
 
 // LCD pins <--> Arduino pins
 const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
@@ -69,7 +79,12 @@ const int stepsPerRevolution = 2038;
 
 // SETUP
 void setup() {
+  U0init(9600); // Initialize Serial Port
+  adc_init();   // Setup ADC
+  setup_timer_regs();
   lcd.begin(16, 2); // set up number of columns and rows
+  dht.begin();
+  
   unsigned char value = 0b01111000; // Set DDR register to 0110 0000
   // Set PK7 as input with pull-up resistor enabled
   *ddr_K &= ~(1 << 7);  // Set bit 7 of DDRK to 0 for input pin A15
@@ -79,19 +94,14 @@ void setup() {
   *ddr_K |= value;  // Set bit 6 and bit 5 of DDRK to 1 for output
   *port_K |= (1 << 6); // set bit 6 of PORTK to turn on the yellow LED initially pin A14
   *port_K |= ~(1 << 5); // clear bit 5 of PORTK to turn off the green LED initially pin A13
-  
 
-  // Initialize Timer
-  setup_timer_regs();
-
-  adc_init();   // Setup ADC
-  U0init(9600); // Initialize Serial Port
 }
 
 
 
 // LOOP
 void loop(){
+  
   // // Read and print the state of each pin in PORTK
   // for (int pin = PK0; pin <= PK7; pin++) {
   //   int state = (PORTK >> pin) & 0x01; // Read the state of the pin in PORTK
@@ -126,8 +136,16 @@ void loop(){
 
   
 
-  int temp;
-  int humidity;
+  
+  int temperature = dht.readTemperature(true);
+  int humidity = dht.readHumidity();
+
+   // Check if readings are valid
+  // if (isnan(temperature) || isnan(humidity)) {
+  //   lcd.setCursor(0, 0);
+  //   lcd.print("Error reading DHT!");
+  //   return;
+  // }
 
   // Print current state at the top portion of the LCD
   lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
@@ -138,12 +156,16 @@ void loop(){
   // humidity = 20;
 
   // Print to LCD only if PK5 or PK6 is set
-  lcd.setCursor(0, 1); // Set cursor to the beginning of the second row
-  lcd.print("T: ");
-  lcd.print(temp);
-  lcd.print(" H: ");
+  lcd.setCursor(9, 0); // Set cursor to the beginning of the second row
+  lcd.print("T:");
+  lcd.print(temperature);
+  lcd.print("*C");
+  lcd.setCursor(9, 1);
+  lcd.print("H:");
   lcd.print(humidity); // Display temperature and humidity on the LCD
   lcd.clear(); // Clear the LCD
+
+  
 
   // Check if PK6 is set (yellow LED is on)
   if (*port_K & (1 << 6)) {
@@ -159,6 +181,8 @@ void loop(){
 
 
 }
+
+
 
 
 // ISR to handle button press
