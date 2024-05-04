@@ -1,9 +1,8 @@
 //Computer Engineering 301:   Final Project
 //File:                       Main Driver
 //Authors:                    Mason Haines, Autsin Jarolimek, Samuel Mouradian
-//Version:                    2.0
-//Date of Last Revision:      05.1.2024
-//Latest Edit Note:           Implemented Stepper Motor Code, RTC, and Delay Function
+//Date of Last Revision:      05.03.2024
+//Latest Edit Note:           RTC Finalized
 
 
 //pins in use 
@@ -17,7 +16,8 @@
 #include "DHT.h"
 #include "DHT_U.h"
 
-   // Digital pin connected to the DHT sensor
+
+// Digital pin connected to the DHT sensor
 // Feather HUZZAH ESP8266 note: use pins 3, 4, 5, 12, 13 or 14 --
 // Pin 15 can work but DHT must be disconnected during program upload.
 
@@ -245,45 +245,44 @@ void my_delay(unsigned int freq){
   *myTIFR1 |= 0x01;                               //Reset TOV
 }
 
-// REAL TIME CLOCK FUNCTION
-// void RTCtime(){
-//   DateTime now = rtc.now();
-//   int year = now.year();
-//   int month = now.month();
-//   int day = now.day();
-//   int hour = now.hour();
-//   int minute = now.minute();
-//   int second = now.second();
-//   char time[24] = {
-//     'a',
-//     't',
-//     ' ',
-//     hour / 10 + '0',
-//     hour % 10 + '0',
-//     ':',
-//     minute / 10 + '0',
-//     minute % 10 + '0',
-//     ':',
-//     second / 10 + '0',
-//     second % 10 + '0',
-//     'o',
-//     'n',
-//     month / 10 + '0',
-//     month % 10 + '0',
-//     '/',
-//     day / 10 + '0',
-//     day % 10 + '0',
-//     '/',
-//     (year / 1000) + '0',
-//     (year % 1000 / 100) + '0',
-//     (year % 100 / 10) + '0',
-//     (year % 10) + '0',
-//   };
-//   for (int i = 0; i < 23; i++)
-//   {
-//     U0putchar(time[i]);
-//   }
-// }
+
+void RTCtime(){
+  DateTime now = rtc.now();
+  int year = now.year();
+  int month = now.month();
+  int day = now.day();
+  int hour = now.hour();
+  int minute = now.minute();
+  int second = now.second();
+  char time[24] = {
+    'a',
+    't',
+    ' ',
+    hour / 10 + '0',
+    hour % 10 + '0',
+    ':',
+    minute / 10 + '0',
+    minute % 10 + '0',
+    ':',
+    second / 10 + '0',
+    second % 10 + '0',
+    'o',
+    'n',
+    month / 10 + '0',
+    month % 10 + '0',
+    '/',
+    day / 10 + '0',
+    day % 10 + '0',
+    '/',
+    (year / 1000) + '0',
+    (year % 1000 / 100) + '0',
+    (year % 100 / 10) + '0',
+    (year % 10) + '0',
+  };
+  for (int i = 0; i < 23; i++){
+    U0putchar(time[i]);
+  }
+}
 
 void U0init(unsigned long U0baud){
   unsigned long FCPU = 16000000;
