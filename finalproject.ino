@@ -1,13 +1,12 @@
 //Computer Engineering 301:   Final Project
 //File:                       Main Driver
 //Authors:                    Mason Haines, Autsin Jarolimek, Samuel Mouradian
-//Date of Last Revision:      05.03.2024
-//Latest Edit Note:           RTC Finalized
+//Version:                    2.0
+//Date of Last Revision:      05.1.2024
+//Latest Edit Note:           Implemented Stepper Motor Code, RTC, and Delay Function
 
 
-//pins in use 
-// A14 yellow, A12 green , blue,  red
-//A15 on button, A0 stepper, A1 stepper 
+
 
 // HEADERS
 #include <LiquidCrystal.h>
@@ -16,13 +15,7 @@
 #include "DHT.h"
 #include "DHT_U.h"
 
-<<<<<<< Updated upstream:finalproject.ino
 
-=======
->>>>>>> Stashed changes:finalproject/finalproject.ino
-// Digital pin connected to the DHT sensor
-// Feather HUZZAH ESP8266 note: use pins 3, 4, 5, 12, 13 or 14 --
-// Pin 15 can work but DHT must be disconnected during program upload.
 
 enum State { DISABLED, RUNNING, IDLE, ERROR };
 State currentState = DISABLED;
@@ -74,9 +67,6 @@ int temperature = 0; // Declare temperature variable outside the if block
 int humidity = 0;
 DHT dht(DHTPIN, DHTTYPE);
 
-int water_sensor_channel = 0; // ADC channel for water level sensor
-int waterlevel = 0;   // Previous water level value
-
 
 // LCD pins <--> Arduino pins
 const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
@@ -87,7 +77,7 @@ const int stepsPerRevolution = 2038;
 // Stepper myStepper = Stepper(stepsPerRevolution, needs four pins in analog );
 
 
-int adc_id = 7;
+int waterSens_id = 7;
 int HistoryValue = 0;
 char printBuffer[128];
 
@@ -116,6 +106,14 @@ void setup() {
 
 // LOOP
 void loop() {
+
+  int waterLevel = adc_read(waterSens_id); // Get current ADC waterLevel
+
+  // Check if the ADC waterLevel is under 25
+  if (waterLevel < 25) {
+    currentState = ERROR; // Change state to ERROR
+    return; // Exit the function
+  }
   
   // Check if initial readings have been done
   if (!initialTempFlag) {
@@ -147,53 +145,47 @@ void loop() {
           return;
         }
       }
-      
-      // Print to LCD only if PK5 or PK6 is set
-      // lcd.setCursor(9, 0); // Set cursor to the beginning of the second row
-      // lcd.print("T:");
-      // lcd.print(temperature);
-      // lcd.print("*F");
-      // lcd.setCursor(9, 1);
-      // lcd.print("H:");
-      // lcd.print(humidity); // Display temperature and humidity on the LCD
-      // lcd.clear(); // Clear the LCD
     }
-    
   }
 
   uint8_t clearLights = ~(0x78); // 0x78 01111000, light reset
 
   switch (currentState) {
     case DISABLED:
-      LCDState = "DISABLED"; // Update currentState to DISABLED
-      if(!(*port_K & (1 << 6))) {*port_K &= clearLights;}
-      *port_K |= (1 << 6); // Turn on the yellow LED PK6
+        LCDState = "DISABLED"; // Update currentState to DISABLED
+        if(!(*port_K & (1 << 6))) {*port_K &= clearLights;}
+        *port_K |= (1 << 6); // Turn on the yellow LED PK6
         
         break;
     case RUNNING:
-      LCDState = "RUNNING"; // Update currentState to RUNNING
-    
+        LCDState = "RUNNING"; // Update currentState to RUNNING
+        if(!(*port_K & (1 << 4))) {*port_K &= clearLights;}
+        *port_K |= (1 << 4); // Turn on the blue LED PK4
         
         break;
     case IDLE:
-      LCDState = "IDLE"; // Update currentState to IDLE
-      if(!(*port_K & (1 << 5))) {*port_K &= clearLights;}
-      *port_K |= (1 << 5); // Turn on the green LED PK5
-      printHumidTemp(temperature, humidity);
-      checkWaterLevel(adc_id, HistoryValue);
+        LCDState = "IDLE"; // Update currentState to IDLE
+        if(!(*port_K & (1 << 5))) {*port_K &= clearLights;}
+        *port_K |= (1 << 5); // Turn on the green LED PK5
+        printHumidTemp(temperature, humidity, waterLevel);
+        checkWaterLevel(waterSens_id, HistoryValue); // this is for testing 
+      
         
         
         break;
     case ERROR:
-      LCDState = "ERROR"; // Update currentState to ERROR
-        
-        
+        LCDState = "ERROR"; // Update currentState to ERROR // 0ygb r000
+        if(!(*port_K & (1 << 3))) {*port_K &= clearLights;} // 0000 0000
+        *port_K |= (1 << 3); // Turn on the Red LED PK3
+        lcd.setCursor(0, 1);
+        lcd.print("H2o level low: ");
+        lcd.print(waterLevel);
         break;
 }
 
 }
 
-void printHumidTemp(int temperature, int humidity) {
+void printHumidTemp(int temperature, int humidity, int waterlevel) {
   // Print to LCD only if PK5 or PK6 is set
   lcd.setCursor(9, 0); // Set cursor to the beginning of the second row
   lcd.print("T:");
@@ -202,30 +194,35 @@ void printHumidTemp(int temperature, int humidity) {
   lcd.setCursor(9, 1);
   lcd.print("H:");
   lcd.print(humidity); // Display temperature and humidity on the LCD
+  lcd.setCursor(0, 1);
+  lcd.print("H2O: ");
+  lcd.print(waterlevel);
   lcd.clear(); // Clear the LCD
 }
 
 // Function to print ADC value to Serial ---------------- ONLY FOR TESTING
-void printADCValue(int adc_id, int value) {
-  sprintf(printBuffer, "ADC%d level is %d\n", adc_id, value);
+void printADCValue(int waterSens_id, int value) {
+  sprintf(printBuffer, "ADC%d level is %d\n", waterSens_id, value);
   Serial.print(printBuffer);
 }
 
 // Function to check ADC value and print if significant change is detected
-void checkWaterLevel(int adc_id, int historyValue) {
-  int value = adc_read(adc_id); // Get current ADC value
+void checkWaterLevel(int waterSens_id, int historyValue) {
+  int value = adc_read(waterSens_id); // Get current ADC value
 
   // Check if the ADC value is under 25
-  if (value < 1000) {
+  if (value < 25) {
     currentState = ERROR; // Change state to ERROR
     return; // Exit the function
   }
+  historyValue = value;
+  
 
   /////// -------------------------------------------ONLY FOR TESTING
   // Check for significant change in ADC value
   if (((historyValue >= value) && ((historyValue - value) > 10)) ||
       ((historyValue < value) && ((value - historyValue) > 10))) {
-    printADCValue(adc_id, value); // Print ADC value
+    printADCValue(waterSens_id, value); // Print ADC value
     historyValue = value; // Update history value
   }/////// -------------------------------------------ONLY FOR TESTING
 }
@@ -237,9 +234,10 @@ ISR(TIMER1_OVF_vect)
   // Check if the button is pressed (PK7 is low)
   if (!(*pin_K & (1 << 7))) {
     if (currentState == DISABLED) {
-        currentState = IDLE; // If the current state is disabled, change it to idle
+      currentState = IDLE; // If the current state is disabled, change it to idle
     } else {
-        currentState = DISABLED; // If it's anything other than disabled, change it to disabled
+      lcd.clear();
+      currentState = DISABLED; // If it's anything other than disabled, change it to disabled
     }
     // Wait for the button to be released
     while (!(*pin_K & (1 << 7)));
@@ -282,44 +280,45 @@ void my_delay(unsigned int freq){
   *myTIFR1 |= 0x01;                               //Reset TOV
 }
 
-
-void RTCtime(){
-  DateTime now = rtc.now();
-  int year = now.year();
-  int month = now.month();
-  int day = now.day();
-  int hour = now.hour();
-  int minute = now.minute();
-  int second = now.second();
-  char time[24] = {
-    'a',
-    't',
-    ' ',
-    hour / 10 + '0',
-    hour % 10 + '0',
-    ':',
-    minute / 10 + '0',
-    minute % 10 + '0',
-    ':',
-    second / 10 + '0',
-    second % 10 + '0',
-    'o',
-    'n',
-    month / 10 + '0',
-    month % 10 + '0',
-    '/',
-    day / 10 + '0',
-    day % 10 + '0',
-    '/',
-    (year / 1000) + '0',
-    (year % 1000 / 100) + '0',
-    (year % 100 / 10) + '0',
-    (year % 10) + '0',
-  };
-  for (int i = 0; i < 23; i++){
-    U0putchar(time[i]);
-  }
-}
+// REAL TIME CLOCK FUNCTION
+// void RTCtime(){
+//   DateTime now = rtc.now();
+//   int year = now.year();
+//   int month = now.month();
+//   int day = now.day();
+//   int hour = now.hour();
+//   int minute = now.minute();
+//   int second = now.second();
+//   char time[24] = {
+//     'a',
+//     't',
+//     ' ',
+//     hour / 10 + '0',
+//     hour % 10 + '0',
+//     ':',
+//     minute / 10 + '0',
+//     minute % 10 + '0',
+//     ':',
+//     second / 10 + '0',
+//     second % 10 + '0',
+//     'o',
+//     'n',
+//     month / 10 + '0',
+//     month % 10 + '0',
+//     '/',
+//     day / 10 + '0',
+//     day % 10 + '0',
+//     '/',
+//     (year / 1000) + '0',
+//     (year % 1000 / 100) + '0',
+//     (year % 100 / 10) + '0',
+//     (year % 10) + '0',
+//   };
+//   for (int i = 0; i < 23; i++)
+//   {
+//     U0putchar(time[i]);
+//   }
+// }
 
 void U0init(unsigned long U0baud){
   unsigned long FCPU = 16000000;
