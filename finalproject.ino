@@ -16,10 +16,16 @@
 #include "DHT.h"
 #include "DHT_U.h"
 
+<<<<<<< Updated upstream:finalproject.ino
 
+=======
+>>>>>>> Stashed changes:finalproject/finalproject.ino
 // Digital pin connected to the DHT sensor
 // Feather HUZZAH ESP8266 note: use pins 3, 4, 5, 12, 13 or 14 --
 // Pin 15 can work but DHT must be disconnected during program upload.
+
+enum State { DISABLED, RUNNING, IDLE, ERROR };
+State currentState = DISABLED;
 
 
 #define DHTPIN 6  
@@ -57,14 +63,19 @@ volatile unsigned char* pin_K  = (unsigned char*) 0x106;
 volatile unsigned char* port_E = (unsigned char*) 0x2E; 
 volatile unsigned char* ddr_E  = (unsigned char*) 0x2D; 
 volatile unsigned char* pin_E  = (unsigned char*) 0x2C; 
-// #define PK6 (1 << 4) // PK6 pin A14
-// #define PK5 (1 << 5) // PK5 pin A13
 
 unsigned int timer_running; 
 unsigned int currentTicks; 
-const char *currentState = "DISABLED"; // Default state is DISABLED
+const char *LCDState = "DISABLED"; // Default state is DISABLED
 
+unsigned long lastTempUpdate = 0; // Variable to store the last time temperature was updated
+bool initialTempFlag = false; // Flag to track if initial readings have been done
+int temperature = 0; // Declare temperature variable outside the if block
+int humidity = 0;
 DHT dht(DHTPIN, DHTTYPE);
+
+int water_sensor_channel = 0; // ADC channel for water level sensor
+int waterlevel = 0;   // Previous water level value
 
 
 // LCD pins <--> Arduino pins
@@ -76,11 +87,15 @@ const int stepsPerRevolution = 2038;
 // Stepper myStepper = Stepper(stepsPerRevolution, needs four pins in analog );
 
 
+int adc_id = 7;
+int HistoryValue = 0;
+char printBuffer[128];
+
 
 // SETUP
 void setup() {
   U0init(9600); // Initialize Serial Port
-  adc_init();   // Setup ADC
+  // adc_init();   // Setup ADC
   setup_timer_regs();
   lcd.begin(16, 2); // set up number of columns and rows
   dht.begin();
@@ -93,116 +108,138 @@ void setup() {
   // Set PK6 and PK5 as outputs and turn off the LEDs initially
   *ddr_K |= value;  // Set bit 6 and bit 5 of DDRK to 1 for output
   *port_K |= (1 << 6); // set bit 6 of PORTK to turn on the yellow LED initially pin A14
-  *port_K |= ~(1 << 5); // clear bit 5 of PORTK to turn off the green LED initially pin A13
-
+  // *port_K |= ~(1 << 5); // clear bit 5 of PORTK to turn off the green LED initially pin A13
+  adc_init();   // Setup ADC
 }
 
 
 
 // LOOP
-void loop(){
+void loop() {
   
-  // // Read and print the state of each pin in PORTK
-  // for (int pin = PK0; pin <= PK7; pin++) {
-  //   int state = (PORTK >> pin) & 0x01; // Read the state of the pin in PORTK
-  //   Serial.print("Pin PK");
-  //   Serial.print(pin);
-  //   Serial.print(" state: ");
-  //   Serial.println(state);
-  // }
-  
-  // // Add delay if necessary
-  // delay(1000);
-  // readAndPrint(cs1);
-  // RTCtime();
+  // Check if initial readings have been done
+  if (!initialTempFlag) {
+    temperature = dht.readTemperature(true);
+    humidity = dht.readHumidity();
 
-// // Read ADC value from different channels to toggle stepper motor
-//   int adcValue0 = adc_read(0); // Button 1
-//   int adcValue1 = adc_read(1); // Button 2
+    // Check if readings are valid
+    if (!isnan(temperature) && !isnan(humidity)) {
+      initialTempFlag = true; // Set the flag to true once initial readings are done
+    }
+  } else {
+    // Check if the system is in an idle state
+    // Print current state at the top portion of the LCD
+    lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
+    lcd.print(LCDState); // Display the current state on the LCD
 
-// // Check if button 1 is pressed
-//   if (adcValue0 > 800) {         
-//     moveStepper(100);            // Move clockwise by 100 steps
-//     while (adc_read(0) > 800) {} // Wait until button 1 is released
-//     my_delay(100);
-//   }
+    if (!DISABLED) {
+      // Check if it's time to update the temperature
+      unsigned long currentMillis = millis();
+      if (currentMillis - lastTempUpdate >= 60000) {
+        lastTempUpdate = currentMillis; // Update the last update time
+        temperature = dht.readTemperature(true);
+        humidity = dht.readHumidity();
 
-// // Check if button 2 is pressed
-//   if (adcValue1 > 800) {         
-//     moveStepper(-100);           // Move counterclockwise by 100 steps
-//     while (adc_read(1) > 800) {} // Wait until button 2 is released
-//     my_delay(100);
-//   }
+        // Check if readings are valid
+        if (isnan(temperature) || isnan(humidity)) {
+          lcd.setCursor(0, 0);
+          lcd.print("Error reading DHT!");
+          return;
+        }
+      }
+      
+      // Print to LCD only if PK5 or PK6 is set
+      // lcd.setCursor(9, 0); // Set cursor to the beginning of the second row
+      // lcd.print("T:");
+      // lcd.print(temperature);
+      // lcd.print("*F");
+      // lcd.setCursor(9, 1);
+      // lcd.print("H:");
+      // lcd.print(humidity); // Display temperature and humidity on the LCD
+      // lcd.clear(); // Clear the LCD
+    }
+    
+  }
 
-  
+  uint8_t clearLights = ~(0x78); // 0x78 01111000, light reset
 
-  
-  int temperature = dht.readTemperature(true);
-  int humidity = dht.readHumidity();
+  switch (currentState) {
+    case DISABLED:
+      LCDState = "DISABLED"; // Update currentState to DISABLED
+      if(!(*port_K & (1 << 6))) {*port_K &= clearLights;}
+      *port_K |= (1 << 6); // Turn on the yellow LED PK6
+        
+        break;
+    case RUNNING:
+      LCDState = "RUNNING"; // Update currentState to RUNNING
+    
+        
+        break;
+    case IDLE:
+      LCDState = "IDLE"; // Update currentState to IDLE
+      if(!(*port_K & (1 << 5))) {*port_K &= clearLights;}
+      *port_K |= (1 << 5); // Turn on the green LED PK5
+      printHumidTemp(temperature, humidity);
+      checkWaterLevel(adc_id, HistoryValue);
+        
+        
+        break;
+    case ERROR:
+      LCDState = "ERROR"; // Update currentState to ERROR
+        
+        
+        break;
+}
 
-   // Check if readings are valid
-  // if (isnan(temperature) || isnan(humidity)) {
-  //   lcd.setCursor(0, 0);
-  //   lcd.print("Error reading DHT!");
-  //   return;
-  // }
+}
 
-  // Print current state at the top portion of the LCD
-  lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
-  lcd.print(currentState); // Display the current state on the LCD
-
-  // Replace these values with actual temperature and humidity readings
-  // temp = 10;
-  // humidity = 20;
-
+void printHumidTemp(int temperature, int humidity) {
   // Print to LCD only if PK5 or PK6 is set
   lcd.setCursor(9, 0); // Set cursor to the beginning of the second row
   lcd.print("T:");
   lcd.print(temperature);
-  lcd.print("*C");
+  lcd.print("*F");
   lcd.setCursor(9, 1);
   lcd.print("H:");
   lcd.print(humidity); // Display temperature and humidity on the LCD
   lcd.clear(); // Clear the LCD
-
-  
-
-  // Check if PK6 is set (yellow LED is on)
-  if (*port_K & (1 << 6)) {
-    
-    currentState = "DISABLED"; // Update currentState to DISABLED
-  }
-
-  // Check if PK6 is cleared (yellow LED is off)
-  if (!(*port_K & (1 << 6))) {
-    
-    currentState = "IDLE"; // Update currentState to IDLE
-  }
-
-
 }
 
+// Function to print ADC value to Serial ---------------- ONLY FOR TESTING
+void printADCValue(int adc_id, int value) {
+  sprintf(printBuffer, "ADC%d level is %d\n", adc_id, value);
+  Serial.print(printBuffer);
+}
 
+// Function to check ADC value and print if significant change is detected
+void checkWaterLevel(int adc_id, int historyValue) {
+  int value = adc_read(adc_id); // Get current ADC value
+
+  // Check if the ADC value is under 25
+  if (value < 1000) {
+    currentState = ERROR; // Change state to ERROR
+    return; // Exit the function
+  }
+
+  /////// -------------------------------------------ONLY FOR TESTING
+  // Check for significant change in ADC value
+  if (((historyValue >= value) && ((historyValue - value) > 10)) ||
+      ((historyValue < value) && ((value - historyValue) > 10))) {
+    printADCValue(adc_id, value); // Print ADC value
+    historyValue = value; // Update history value
+  }/////// -------------------------------------------ONLY FOR TESTING
+}
 
 
 // ISR to handle button press
 ISR(TIMER1_OVF_vect)
 {
-  
   // Check if the button is pressed (PK7 is low)
   if (!(*pin_K & (1 << 7))) {
-    // lcd.clear();
-    // Toggle the LED only if it was previously off
-    if (!(*port_K & (1 << 5))) {
-      
-      *port_K |= (1 << 5); // Turn on the green LED PK5
-      *port_K &= ~(1 << 6); // Turn off the yellow LED PK6
-      // currentState = "IDLE"; // Update currentState to IDLE
+    if (currentState == DISABLED) {
+        currentState = IDLE; // If the current state is disabled, change it to idle
     } else {
-      
-      *port_K &= ~(1 << 5); // Turn off the green LED PK5
-      *port_K |= (1 << 6); // Turn on the yellow LED PK6
-      // currentState = "DISABLED"; // Update currentState to DISABLED
+        currentState = DISABLED; // If it's anything other than disabled, change it to disabled
     }
     // Wait for the button to be released
     while (!(*pin_K & (1 << 7)));
@@ -306,6 +343,14 @@ unsigned char U0getchar(){
 void U0putchar(unsigned char U0pdata){
   while (!(*myUCSR0A & TBE)){}
   *myUDR0 = U0pdata;
+}
+
+void U0putstring(char* U0pstring) {
+  while(*U0pstring) {
+      while(!(*myUCSR0A & TBE));
+      *myUDR0 = *U0pstring;
+      U0pstring++;
+  }
 }
 
 void readAndPrint(unsigned char input){
