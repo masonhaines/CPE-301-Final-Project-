@@ -112,7 +112,8 @@ OTHER NOTES:
 COMPLETED PORTIONS:
     - Stepper Motor               (INDEPENDENT)
         - Implemented Stepper Motor function          (Implementation Location: "finalproject.ino")
-    - Fan Motor                   (INDEPENDENT)
+    - Fan Motor   
+        - Implement Fan Motor Function            (Desired Implementation Location: "finalproject.ino")                
     - Temperature/Humidity Sensor (INDEPENDENT)
         - Implemented Temperature/Humidity Senspr     (Implementation Location: "finalproject.ino")
     - Water Level Sensor          (INDEPENDENT)
@@ -123,8 +124,7 @@ COMPLETED PORTIONS:
         - Implemented delay function into main driver (Implementation Location: "finalproject.ino")
     - LCD Function                (INDEPENDENT)
         - Implemented LCD Display into main driver    (Implementation Location: "finalproject.ino")
-
-
-
+    
 STILL TO DO:
-    - Implement Fan Motor Function            (Desired Implementation Location: "finalproject.ino")
+    
+LAST UPDATED: 5/6/2024 5pm

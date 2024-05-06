@@ -4,11 +4,14 @@ CPE 301 Final Project - creating a cooling system
 
 Authors: Mason Haines, Austin Jarolimek, Samuel Mouradian
 
-## Stepper Motor
+## Final Lab Completed Circuit
 
-stepper motor draft 1. Only using stepper motor. 
-![stepper motor](stepMotorSetup_draft1.jpg)
+
+![Final Draft Circuit](CircuitPictures/finallabCircuit.jpg)
+
+## Final Lab Circuit Design
+
+![Circuit Design](CircuitPictures/CircuitDesign.png)
 
 ## Cooler Demomnstration Video
 
-## REFERENCES
