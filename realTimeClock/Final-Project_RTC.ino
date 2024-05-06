@@ -12,6 +12,10 @@ volatile unsigned char *myUCSR0C = (unsigned char *) 0x00C2;
 volatile unsigned int  *myUBRR0  = (unsigned int *)  0x00C4;
 volatile unsigned char *myUDR0   = (unsigned char *) 0x00C6;
 
+enum State { DISABLED, RUNNING, IDLE, ERROR };
+State currentState = DISABLED;
+State tempState;
+
 
 void setup() {
   Serial.begin(9600);
@@ -30,9 +34,13 @@ void setup() {
 }
 
 void loop(){
-  RTCtime();
-  U0putstring('\n');
-  delay(10000);
+  if(currentState != tempState){
+    RTCtime();
+    tempState = currentState;
+  }
+  else{
+    currentState = tempState;
+  }
 }
 
 void RTCtime(){
@@ -74,6 +82,7 @@ void RTCtime(){
   {
     U0putchar(time[i]);
   }
+  U0putstring('\n');
 }
 
 void U0putchar(unsigned char U0pdata){
