@@ -6,9 +6,7 @@
 //Latest Edit Note:           Implemented Stepper Motor Code, RTC, and Delay Function
 
 
-//pins in use 
-// A14 yellow, A12 green , blue,  red
-//A15 on button, A0 stepper, A1 stepper 
+
 
 // HEADERS
 #include <LiquidCrystal.h>
@@ -25,6 +23,7 @@ RTC_DS1307 rtc;
 
 enum State { DISABLED, RUNNING, IDLE, ERROR };
 State currentState = DISABLED;
+State tempState = ERROR;
 
 
 #define DHTPIN 14  
@@ -148,7 +147,13 @@ void setup() {
 void loop() {
 
   // int waterLevel = adc_read(waterSens_id); // Get current ADC waterLevel
-
+  if(currentState != tempState){
+    RTCtime();
+    tempState = currentState;
+  }
+  else{
+    currentState = tempState;
+  }
   
   
   // Check if initial readings have been done
@@ -166,7 +171,7 @@ void loop() {
     lcd.setCursor(0, 0); // Set cursor to the beginning of the first row
     lcd.print(LCDState); // Display the current state on the LCD
 
-    // if (!DISABLED) {
+    if (!DISABLED) {
       // Check if it's time to update the temperature
       unsigned long currentMillis = millis();
       if (currentMillis - lastTempUpdate >= 60000) {
@@ -181,7 +186,7 @@ void loop() {
           return;
         }
       }
-    // }
+    }
   }
 
   uint8_t clearLights = ~(0x78); // 0x78 01111000, light reset
@@ -202,79 +207,62 @@ void loop() {
         LCDState = "RUNNING"; // Update currentState to RUNNING
         if(!(*port_K & (1 << 4))) {*port_K &= clearLights;}
         *port_K |= (1 << 4); // Turn on the blue LED PK4
+        temperature = dht.readTemperature(true); // FOR TESTING
+        humidity = dht.readHumidity(); // FOR TESTING
         printHumidTemp(temperature, humidity);
         checkWaterLevel(waterSens_id); // this is for testing 
         
         // start fan
         // my_delay(10);
         toggleMotor_ON_OFF();
-        // if (temperature < 70) {
-        //   *port_D &= turnOffFan;
-        //   currentState = IDLE;
-        // }
-        // allow vent movement
-        // Check if button 1 is pressed
-        // if (adcValue0 > 500) { // Assuming a threshold value for button press
-        //   myStepper.setSpeed(5);
-        //   myStepper.step(100);
-        //   my_delay(200);
-        //   // while (adc_read(0) > 500) {} // Wait until button 1 is released
-        //   adcValue0 = 0;
-        // }
+        if (temperature < 74) {
+          *port_D &= turnOffFan;
+          currentState = IDLE;
+        }
+        
+        if (*pin_F & (1 << 0)) { // Assuming a threshold value for button press 
+          myStepper.setSpeed(5);
+          myStepper.step(-50);
+          while (*pin_F & (1 << 0)) {} // Wait until button 1 is released
+        }
         // // Check if button 2 is pressed
-        // if (adcValue1 > 200) { // Assuming a threshold value for button press
-        //   myStepper.setSpeed(5);
-        //   myStepper.step(-100);
-        //   my_delay(200);
-        //   // while (adc_read(1) > 500) {}
-        //   adcValue1 = 0; // Wait until button 2 is released
-        // }
+        if (*pin_F & (1 << 1)) { // Assuming a threshold value for button press
+          myStepper.setSpeed(5);
+          myStepper.step(-50);
+          while (*pin_F & (1 << 1)) {} // Wait until button 2 is released
+        }
         break;
     case IDLE:
         LCDState = "IDLE"; // Update currentState to IDLE
         if(!(*port_K & (1 << 5))) {*port_K &= clearLights;}
         *port_K |= (1 << 5); // Turn on the green LED PK5
         *port_K &= turnOffFan;
+        temperature = dht.readTemperature(true); // FOR TESTING
+        humidity = dht.readHumidity(); // FOR TESTING
         printHumidTemp(temperature, humidity);
         checkWaterLevel(waterSens_id); // this is for testing 
 
         // if too hot go to running 
-        if (temperature > 74) {
+        if (temperature > 73) {
           currentState = RUNNING;
         }
-        // // Check if button 1 is pressed
-        // if (*pin_F & (1 << 0))) { // Assuming a threshold value for button press
-        //     if (*pin_F & (1 << 0)) { // Assuming a threshold value for button press
-        //     moveStepper(100); // Move clockwise by 100 steps
-        //     while (*pin_F & (1 << 0)) {} // Wait until button 1 is released
-        //   }// Wait until button 1 is released
-        // }
-        // // // Check if button 2 is pressed
-        // if (*pin_F & (1 << 1)) { // Assuming a threshold value for button press
-        //   moveStepper(-100); // Move counterclockwise by 100 steps
-        //   while (*pin_F & (1 << 1)) {} // Wait until button 2 is released
-        // }
-        // if (adcValue0 > 500) { // Assuming a threshold value for button press
-        //   myStepper.setSpeed(5);
-        //   myStepper.step(100);
-        //   my_delay(200);
-        //   // while (adc_read(0) > 500) {} // Wait until button 1 is released
-        //   adcValue0 = 0;
-        // }
+        if (*pin_F & (1 << 0)) { // Assuming a threshold value for button press 
+          myStepper.setSpeed(5);
+          myStepper.step(-50);
+          while (*pin_F & (1 << 0)) {} // Wait until button 1 is released
+        }
         // // Check if button 2 is pressed
-        // if (adcValue1 > 500) { // Assuming a threshold value for button press
-        //   myStepper.setSpeed(5);
-        //   myStepper.step(-100);
-        //   my_delay(200);
-        //   // while (adc_read(1) > 500) {}
-        //   adcValue1 = 0; // Wait until button 2 is released
-        // }
+        if (*pin_F & (1 << 1)) { // Assuming a threshold value for button press
+          myStepper.setSpeed(5);
+          myStepper.step(-50);
+          while (*pin_F & (1 << 1)) {} // Wait until button 2 is released
+        }
         break;
     case ERROR:
         LCDState = "ERROR"; // Update currentState to ERROR // 0ygb r000
         if(!(*port_K & (1 << 3))) {*port_K &= clearLights;} // 0000 0000
         *port_K |= (1 << 3); // Turn on the Red LED PK3
-        // *port_D &= turnOffFan;
+        *port_K &= turnOffFan;
         checkWaterLevel(waterSens_id); // this is for testing 
         lcd.setCursor(0, 1);
         lcd.print("H2o level low: ");
@@ -283,33 +271,15 @@ void loop() {
   }
 }
 
-// // STEPPER MOTOR FUNCTIONS
-// void moveStepper(int steps){
-//   myStepper.setSpeed(5);
-//   myStepper.step(steps);
-// }
+
 
 void toggleMotor_ON_OFF() { // this is the beta version will need tempps to know ehen to turn on, so will need to be passed arguments 
-  // // Set PD0 to HIGH to set the motor direction (clockwise)
-  // *port_A |= 0x01; // Set P
-  // // Clear PD1 to ensure no conflicting direction setting
-  // *port_A &= ~0x02; // Clear P
-  // // Set PD2 to enable the motor at full speed
-  // *port_A |= 0x04; // Set P
-
   // Set PD0 to HIGH to set the motor direction (clockwise)
   *port_K |= 0x01; // Set P
   // Clear PD1 to ensure no conflicting direction setting
   *port_K &= ~0x02; // Clear P
   // Set PD2 to enable the motor at full speed
   *port_K |= 0x04; // Set P
-
-  // // Set PD0 to HIGH to set the motor direction (clockwise)
-  // *port_D |= 0x01; // Set PD0
-  // // Clear PD1 to ensure no conflicting direction setting
-  // *port_D &= ~0x02; // Clear PD1
-  // // Set PD2 to enable the motor at full speed
-  // *port_D |= 0x04; // Set PD2
 }
 
 void printHumidTemp(int temperature, int humidity) {
@@ -330,15 +300,16 @@ void checkWaterLevel(int waterSens_id) {
   int waterLevel = adc_read(waterSens_id); // Get current ADC waterLevel
 
   // Check if the ADC waterLevel is under 25
-  if (waterLevel < 126) {
+  if (waterLevel < 25) {
+    lcd.clear();
     currentState = ERROR; // Change state to ERROR
     return; // Exit the function
   }
-  
-  // if ((waterLevel > 126) && (*pin_K & (1 << 7))) {
-  //   currentState = IDLE;
-  // }
-  
+  if ( (*pin_K & (1 << 7))) {
+    lcd.clear();
+    my_delay(2);
+    currentState = DISABLED;
+  }
 }
 
 
@@ -351,14 +322,9 @@ ISR(TIMER1_OVF_vect)
     
     if (currentState == DISABLED) {
       currentState = IDLE; // If the current state is disabled, change it to idle
-      // RTCtime();
     } else {
       lcd.clear();
-      
       currentState = DISABLED; // If it's anything other than disabled, change it to disabled
-      
-      // U0putstring('\n');
-      // my_delay(2000);
     }
     // Wait for the button to be released
     while ((*pin_K & (1 << 7)));
@@ -411,12 +377,13 @@ void RTCtime(){
     (year / 1000) + '0',
     (year % 1000 / 100) + '0',
     (year % 100 / 10) + '0',
-    (year % 10) + '0',
+    (year % 10) + '0', ' '
   };
-  for (int i = 0; i < 23; i++)
+  for (int i = 0; i < 26; i++)
   {
     U0putchar(time[i]);
   }
+   U0putchar('\n');
 }
 
 
@@ -468,6 +435,9 @@ void U0putstring(char* U0pstring) {
       *myUDR0 = *U0pstring;
       U0pstring++;
   }
+  // Print a new line after printing the string
+  while(!(*myUCSR0A & TBE));
+  *myUDR0 = '\n';
 }
 
 void readAndPrint(unsigned char input){
