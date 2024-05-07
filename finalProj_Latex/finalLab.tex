@@ -23,14 +23,14 @@
 \renewcommand{\thesubsubsection}{}
 
 \title{CPE 301 Embedded Systems Design Final Project}
-\author{Mason Haines, Sam Mouradian, Austin Jarolimek }
+\author{Mason Haines, Austin Jarolimek, Samuel Mouradian }
 \date{\today}
 \begin{document}
 \maketitle
 
 
 \section{Introduction}
-This lab project focuses on developing an evaporation cooling system, also known as a swamp cooler, using the Arduino 2560 microcontroller and sensors from a standard Arduino kit. The goal is to build a functional cooler capable of cooling and humidifying air through evaporation. The system will involve pulling outside air through a water-soaked pad, leveraging evaporation to lower the air temperature and increase humidity. The tasks include integrating sensors and actuators with the Arduino to automate and control the cooling process. It's important to note that the swamp cooler's effectiveness is limited to dry, hot climates due to its reliance on evaporation, making it ineffective in humid conditions.
+This lab project focuses on developing a cooling system, also known as a swamp cooler, using the Arduino 2560 microcontroller and sensors from a standard Arduino kit. The goal is to build a sudo-functional cooler capable of cooling and humidifying air. To automate cooling using an Arduino Mega 2560, integrate sensors like a water level sensor and a DHT11 for environmental monitoring, along with actuators such as a stepper motor for vent control and a fan for cooling. Use Arduino libraries and directly manipulate register values for precise control and display information on an LCD screen. Include a real-time clock module for logging events. System states manage continuous monitoring, vent control, and motor activation, transitioning between IDLE, ERROR (for low water levels), and RUNNING (during cooling). This setup optimizes automation and control for efficient cooling processes.
 
 
 \subsection{Equipment}
@@ -153,6 +153,46 @@ This lab project focuses on developing an evaporation cooling system, also known
     \caption{Circuit design schematic built on Cirkit Designer.}
     \label{fig:1}
 \end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[angle=0,width=0.7\textwidth]{finallabCircuit.jpg}
+    \caption{Final circuit setup.}
+    \label{fig:1}
+\end{figure}
+
+\section{Contributions}
+
+\begin{itemize}
+    \item \textbf{Mason Haines:}
+    \begin{itemize}
+        \item Fan motor code/circuit
+        \item Stepper motor code/circuit
+        \item Implemented code modules into driver
+    \end{itemize}
+
+    \item \textbf{Austin Jarolimek:}
+    \begin{itemize}
+        \item Temperature/Humidity sensor code/circuit
+        \item Water level sensor code/circuit
+        \item Lab write-up and documentation
+    \end{itemize}
+
+    \item \textbf{Samuel Mouradian:}
+    \begin{itemize}
+        \item My delay code
+        \item RTC code/circuit
+        \item Circuit design schematic
+    \end{itemize}
+
+        \item \textbf{All:}
+    \begin{itemize}
+        \item Circuit implementation
+        \item Final driver debug
+        \item ISR implementation
+        \item GPIO research
+    \end{itemize}
+\end{itemize}
 
 \section {References}
 \begin{itemize}
