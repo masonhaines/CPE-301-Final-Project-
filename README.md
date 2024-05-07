@@ -4,6 +4,8 @@ CPE 301 Final Project - creating a cooling system
 
 Authors: Mason Haines, Austin Jarolimek, Samuel Mouradian
 
+Finalproject folder has the .ino code that implements the psuedo swamp cooler.
+
 ## Cooler Demonstration Video
 https://youtu.be/wbBoBX0tJEE
 
@@ -18,6 +20,4 @@ https://youtu.be/wbBoBX0tJEE
 ## Final Lab Circuit Design
 
 ![Circuit Design](CircuitPictures/CircuitDesign.png)
-
-## Cooler Demomnstration Video
 
